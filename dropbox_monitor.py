@@ -9,9 +9,9 @@ from watchdog.events import FileSystemEventHandler
 from datetime import datetime
 import google.generativeai as genai
 import subprocess
-import base64
 from dotenv import load_dotenv
-import io
+from title_analyzer import TitleAnalyzer
+from tqdm import tqdm
 
 # Load environment variables
 load_dotenv()
@@ -32,6 +32,8 @@ genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
 class TranscriptionHandler(FileSystemEventHandler):
     def __init__(self):
         self.processing_files = set()
+        self.model = genai.GenerativeModel('gemini-1.5-pro')
+        self.title_analyzer = TitleAnalyzer(self.model)
         
     def on_created(self, event):
         if event.is_directory:
@@ -104,39 +106,34 @@ class TranscriptionHandler(FileSystemEventHandler):
     def transcribe_audio(self, wav_path):
         """Transcribe audio using Google Gemini Pro."""
         try:
-            # Read the WAV file
-            with open(wav_path, 'rb') as f:
-                audio_bytes = f.read()
+            # Get file size
+            file_size = os.path.getsize(wav_path)
+            logging.info(f"Uploading audio file ({file_size / 1024 / 1024:.2f} MB)...")
             
-            # Convert to base64
-            audio_b64 = base64.b64encode(audio_bytes).decode()
+            # Upload the file using the File API
+            audio_file = genai.upload_file(wav_path)
+            logging.info("Upload complete. Starting transcription...")
             
-            # Use Gemini 1.5 Pro model
-            model = genai.GenerativeModel('gemini-1.5-pro')
-            
-            # Create content parts
+            # Create content parts using the file reference
             parts = [
-                {
-                    "inline_data": {
-                        "mime_type": "audio/wav",
-                        "data": audio_b64
-                    }
-                },
-                {
-                    "text": "Please transcribe this audio. Provide ONLY the transcription, nothing else."
-                }
+                audio_file,
+                "Please transcribe this audio. Provide ONLY the transcription, nothing else."
             ]
             
             # Generate transcription
-            response = model.generate_content(parts)
+            response = self.model.generate_content(parts)
             return response.text
             
         except Exception as e:
-            logging.error(f"Transcription error: {str(e)}")
+            if "Request payload size exceeds the limit" in str(e):
+                logging.error(f"File is too large to process. Maximum size is 20MB.")
+                logging.error(f"Consider splitting the audio file into smaller segments.")
+            else:
+                logging.error(f"Transcription error: {str(e)}")
             raise
 
     def process_audio_file(self, file_path):
-        """Process a new audio file for transcription."""
+        """Process a new audio file for transcription and analysis."""
         try:
             # Check if file still exists
             if not os.path.exists(file_path):
@@ -156,6 +153,7 @@ class TranscriptionHandler(FileSystemEventHandler):
             audio_copy_path = os.path.join(transcript_folder, filename)
             wav_path = os.path.join(transcript_folder, f"{os.path.splitext(filename)[0]}.wav")
             transcript_path = os.path.join(transcript_folder, f"{os.path.splitext(filename)[0]}.txt")
+            analysis_path = os.path.join(transcript_folder, f"{os.path.splitext(filename)[0]}_analysis.md")
             
             # Copy original audio file
             if not os.path.exists(audio_copy_path):
@@ -170,6 +168,10 @@ class TranscriptionHandler(FileSystemEventHandler):
             # Save transcription
             with open(transcript_path, 'w') as f:
                 f.write(transcription)
+                
+            # Generate and save title analysis
+            analysis_text = self.title_analyzer.analyze_transcript(transcription)
+            self.title_analyzer.save_analysis(analysis_text, analysis_path)
             
             # Clean up WAV file
             if os.path.exists(wav_path):
@@ -182,6 +184,7 @@ class TranscriptionHandler(FileSystemEventHandler):
             logging.info(f"Size: {file_size / 1024 / 1024:.2f} MB")
             logging.info(f"Time: {timestamp}")
             logging.info(f"Transcript saved to: {transcript_path}")
+            logging.info(f"Analysis saved to: {analysis_path}")
             logging.info(f"{'='*50}\n")
                 
         except Exception as e:

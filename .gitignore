@@ -1,5 +1,24 @@
+# Virtual environment and environment variables
 venv/
 .env
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.so
+
+# Audio files and test directories
+Audio Test/
+*.wav
+*.mp3
+*.m4a
+
+# Mac system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Logs
 *.log

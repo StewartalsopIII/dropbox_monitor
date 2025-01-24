@@ -11,6 +11,7 @@ import google.generativeai as genai
 import subprocess
 from dotenv import load_dotenv
 from title_analyzer import TitleAnalyzer
+from transcript_formatter import TranscriptFormatter
 from tqdm import tqdm
 
 # Load environment variables
@@ -34,6 +35,7 @@ class TranscriptionHandler(FileSystemEventHandler):
         self.processing_files = set()
         self.model = genai.GenerativeModel('gemini-1.5-pro')
         self.title_analyzer = TitleAnalyzer(self.model)
+        self.transcript_formatter = TranscriptFormatter()
         
     def on_created(self, event):
         if event.is_directory:
@@ -152,7 +154,7 @@ class TranscriptionHandler(FileSystemEventHandler):
             # Define file paths
             audio_copy_path = os.path.join(transcript_folder, filename)
             wav_path = os.path.join(transcript_folder, f"{os.path.splitext(filename)[0]}.wav")
-            transcript_path = os.path.join(transcript_folder, f"{os.path.splitext(filename)[0]}.txt")
+            transcript_path = os.path.join(transcript_folder, f"{os.path.splitext(filename)[0]}.md")
             analysis_path = os.path.join(transcript_folder, f"{os.path.splitext(filename)[0]}_analysis.md")
             
             # Copy original audio file
@@ -165,9 +167,18 @@ class TranscriptionHandler(FileSystemEventHandler):
             # Get transcription
             transcription = self.transcribe_audio(wav_path)
             
-            # Save transcription
+            # Format and save transcription
+            metadata = {
+                "Meeting": os.path.basename(meeting_folder),
+                "File": filename,
+                "Size": f"{file_size / 1024 / 1024:.2f} MB",
+                "Processed": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            formatted_transcript = self.transcript_formatter.format_transcript(
+                transcription, metadata)
+            
             with open(transcript_path, 'w') as f:
-                f.write(transcription)
+                f.write(formatted_transcript)
                 
             # Generate and save title analysis
             analysis_text = self.title_analyzer.analyze_transcript(transcription)

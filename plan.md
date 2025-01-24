@@ -1,64 +1,106 @@
-# Audio File Chunking Implementation Plan
+# Audio Processing Enhancement Plan
 
-## Objective
-Add support for processing large audio files by implementing intelligent file chunking that maintains audio quality and context.
-
-## Task 1: Create AudioChunker Class
-**Purpose**: Split large audio files into processable chunks
+## Task 1: Convert Transcripts to Markdown Format
+**Purpose**: Switch transcript output from .txt to .md format for better readability and formatting
 **Steps**:
-1. Create new audio_chunker.py file
-2. Implement size checking
-3. Add ffmpeg-based splitting at silence points
-4. Create temporary chunk management
+1. Update file extension handling:
+   - Modify transcript_path creation in both monitor scripts
+   - Change `.txt` extension to `.md`
+   - Update relevant logging messages
+2. Add markdown formatting:
+   - Add metadata header section (timestamp, speakers, etc.)
+   - Format speaker lines with markdown syntax
+   - Handle emphasis and formatting markers
 
 **Validation Criteria**:
-- [ ] Successfully splits files over 15MB
-- [ ] Chunks maintain audio quality
-- [ ] Splits occur at natural silence points
-- [ ] Temporary files cleaned up properly
+- [ ] All new transcripts save as .md files
+- [ ] Markdown formatting preserved in output
+- [ ] Existing functionality remains intact
+- [ ] Logging correctly reflects new file type
 
-## Task 2: Update Transcription Handler
-**Purpose**: Integrate chunking with existing transcription system
+## Task 2: Implement Speaker Diarization
+**Purpose**: Add speaker identification and mapping before chunking process
 **Steps**:
-1. Add chunking support to process_audio_file()
-2. Implement chunk transcription handling
-3. Add transcript reassembly
-4. Update progress logging
+1. Create AudioDiarizer class:
+   - Implement using pyannote.audio
+   - Process full WAV file before chunking
+   - Generate speaker segments with timing
+
+2. Speaker Identification Flow:
+   - Process complete WAV file for diarization
+   - Extract speaker segments and timing
+   - Identify introduction section
+   - Map "Speaker 1/2" to actual names
+   - Create consistent speaker mapping
+   - Store speaker metadata
+
+3. Integrate with AudioChunker:
+   - Pass speaker timing data to chunker
+   - Preserve speaker segments during split
+   - Maintain speaker mapping across chunks
+   - Use existing silence detection
 
 **Validation Criteria**:
-- [ ] Detects when chunking is needed
-- [ ] Processes all chunks successfully
-- [ ] Reassembles transcripts correctly
-- [ ] Maintains existing functionality
+- [ ] Accurate speaker identification
+- [ ] Consistent speaker mapping across chunks
+- [ ] Correct timing preservation
+- [ ] Clean handling of introduction sections
 
 ## Testing Plan
-1. Test with various file sizes:
-   - 10MB file (no chunking needed)
-   - 25MB file (2 chunks)
-   - 50MB file (4+ chunks)
-2. Test with different audio formats:
-   - WAV files
-   - MP3 files
-   - M4A files
-3. Verify handling of:
-   - Continuous speech
-   - Natural pauses
+1. Test different audio scenarios:
+   - Various file sizes
    - Multiple speakers
+   - Different introduction formats
+   - Various recording qualities
+
+2. Verify integration points:
+   - Diarization accuracy
+   - Chunking boundaries
+   - Speaker consistency
+   - Timing alignment
+
+## Task 3: Fix Chunk Size Management
+**Purpose**: Ensure consistent and properly sized chunks during audio splitting
+**Steps**:
+1. Revise silence point selection:
+   - Calculate expected chunk sizes before splitting
+   - Filter silence points to maintain max chunk size
+   - Implement backup splitting if silence points create oversized chunks
+   - Add size validation checks
+
+2. Improve size estimation:
+   - Create accurate audio duration to file size mapping
+   - Calculate WAV file size based on audio parameters
+   - Implement proper chunk size prediction
+   - Add safety margin to prevent oversized chunks
+
+3. Add validation layer:
+   - Verify chunk sizes after splitting
+   - Implement re-splitting for oversized chunks
+   - Add logging for chunk size validation
+   - Create size distribution metrics
+
+**Validation Criteria**:
+- [ ] All chunks maintain size under 15MB
+- [ ] Chunks split at natural silence points when possible
+- [ ] Accurate size prediction before splitting
+- [ ] Detailed logging of chunk size distribution
 
 ## Success Metrics
-1. Can process files of any size
-2. No loss in transcription quality
-3. Clean handling of temporary files
-4. Accurate progress reporting
+1. Accurate speaker identification
+2. Consistent markdown formatting
+3. Clean file management
+4. Preserved audio quality
+5. Accurate progress reporting
 
 ## Implementation Notes
-- Keep chunk size under 15MB to stay safely under 20MB limit
-- Use ffmpeg silence detection for natural break points
-- Maintain original file timestamps
+- Use pyannote.audio for diarization
+- Maintain original audio quality
 - Preserve all metadata
+- Handle error cases gracefully
 
 ## Next Steps
-1. Implement AudioChunker class
-2. Test chunking in isolation
-3. Integrate with TranscriptionHandler
-4. Add comprehensive error handling
+1. Implement markdown conversion
+2. Create AudioDiarizer class
+3. Integrate with existing chunking
+4. Add comprehensive testing

@@ -89,3 +89,43 @@ When using watchdog for file system monitoring, we discovered several critical i
 These insights have significantly improved the stability and reliability of our audio processing system by preventing recursive processing loops and nested folder creation.
 
 _(Add new learnings as we implement and test)_
+
+## Transcript Formatting Implementation (2025-01-24)
+
+### TranscriptFormatter Class Decision
+We decided to create a dedicated TranscriptFormatter class because:
+1. Separation of concerns - isolates formatting logic from file processing
+2. Improves testability of formatting features
+3. Makes future format changes more manageable
+4. Can be reused across different monitoring scripts
+5. Maintains clean, consistent formatting across all transcripts
+
+### Implementation Progress (2025-01-24)
+1. Created TranscriptFormatter class with comprehensive unit tests
+2. Successfully integrated formatter into both monitor scripts
+3. Enhanced metadata handling:
+   - Audio monitor includes: file info, size, timestamp
+   - Dropbox monitor adds: meeting name, file info, size, timestamp
+4. Changed transcript extension from .txt to .md
+5. Maintained backward compatibility with existing components
+
+### Key Learnings from Task 1 Implementation
+1. Breaking the formatter into a separate class proved valuable for:
+   - Clean code organization
+   - Easy testing of formatting logic
+   - Simple integration into both monitor scripts
+   
+2. Testing before integration helped catch issues early:
+   - Unit tests verified all formatting scenarios
+   - Ensured consistent markdown output
+   - Validated metadata handling
+   
+3. Maintaining existing functionality while adding new features:
+   - Kept original audio processing intact
+   - Only changed file extension and output format
+   - Preserved all logging and error handling
+   
+4. Metadata handling improvements:
+   - Different metadata for each monitor type
+   - Consistent formatting across all outputs
+   - Enhanced transcript searchability and organization

@@ -11,6 +11,7 @@ import google.generativeai as genai
 import subprocess
 from dotenv import load_dotenv
 from title_analyzer import TitleAnalyzer
+from audio_chunker import AudioChunker
 from tqdm import tqdm
 
 # Load environment variables
@@ -105,32 +106,55 @@ class AudioTranscriptionHandler(FileSystemEventHandler):
             raise
 
     def transcribe_audio(self, wav_path):
-        """Transcribe audio using Google Gemini Pro."""
+        """
+        Transcribe audio using Google Gemini Pro.
+        Automatically handles file chunking for large files.
+        """
         try:
-            # Get file size
-            file_size = os.path.getsize(wav_path)
-            logging.info(f"Uploading audio file ({file_size / 1024 / 1024:.2f} MB)...")
-            
-            # Upload the file using the File API
-            audio_file = genai.upload_file(wav_path)
-            logging.info("Upload complete. Starting transcription...")
-            
-            # Create content parts using the file reference
-            parts = [
-                audio_file,
-                "Please transcribe this audio. Provide ONLY the transcription, nothing else."
-            ]
-            
-            # Generate transcription
-            response = self.model.generate_content(parts)
-            return response.text
+            # Initialize chunker with 15MB max chunk size
+            with AudioChunker(max_chunk_size_mb=15.0) as chunker:
+                chunk_paths, was_chunked = chunker.chunk_audio(wav_path)
+                
+                if was_chunked:
+                    logging.info(f"File split into {len(chunk_paths)} chunks for processing")
+                    transcriptions = []
+                    
+                    # Process each chunk
+                    for i, chunk_path in enumerate(chunk_paths):
+                        logging.info(f"Processing chunk {i+1}/{len(chunk_paths)}...")
+                        chunk_size = os.path.getsize(chunk_path) / (1024 * 1024)
+                        logging.info(f"Chunk size: {chunk_size:.2f} MB")
+                        
+                        # Upload and transcribe the chunk
+                        audio_file = genai.upload_file(chunk_path)
+                        parts = [
+                            audio_file,
+                            "Please transcribe this audio. Provide ONLY the transcription, nothing else."
+                        ]
+                        response = self.model.generate_content(parts)
+                        transcriptions.append(response.text)
+                    
+                    # Combine transcriptions with double newlines between chunks
+                    return "\n\n".join(transcriptions)
+                
+                else:
+                    # Process single file as before
+                    file_size = os.path.getsize(wav_path)
+                    logging.info(f"Uploading audio file ({file_size / 1024 / 1024:.2f} MB)...")
+                    
+                    audio_file = genai.upload_file(wav_path)
+                    logging.info("Upload complete. Starting transcription...")
+                    
+                    parts = [
+                        audio_file,
+                        "Please transcribe this audio. Provide ONLY the transcription, nothing else."
+                    ]
+                    
+                    response = self.model.generate_content(parts)
+                    return response.text
             
         except Exception as e:
-            if "Request payload size exceeds the limit" in str(e):
-                logging.error(f"File is too large to process. Maximum size is 20MB.")
-                logging.error(f"Consider splitting the audio file into smaller segments.")
-            else:
-                logging.error(f"Transcription error: {str(e)}")
+            logging.error(f"Transcription error: {str(e)}")
             raise
 
     def process_audio_file(self, file_path):
@@ -218,7 +242,7 @@ def monitor_folder(path):
 
 if __name__ == "__main__":
     # Your audio folder path
-    AUDIO_PATH = "/Users/stewartalsop/Dropbox/Crazy Wisdom/Audio Files"
+    AUDIO_PATH = "/Users/stewartalsop/Dropbox/Crazy Wisdom/Business/Coding_Projects/2025/January/dropbox_monitor/Audio Test"
     
     try:
         monitor_folder(AUDIO_PATH)

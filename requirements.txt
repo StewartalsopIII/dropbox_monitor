@@ -1,3 +1,11 @@
 watchdog
 google-generativeai
 python-dotenv
+
+# System Requirements
+# ------------------
+# ffmpeg - Required for audio processing and chunking
+#   Install via:
+#   - Mac: brew install ffmpeg
+#   - Linux: apt-get install ffmpeg
+#   - Windows: Download from https://ffmpeg.org/download.html

@@ -228,7 +228,7 @@ def monitor_folder(path):
     
     event_handler = AudioTranscriptionHandler()
     observer = Observer()
-    observer.schedule(event_handler, path, recursive=True)
+    observer.schedule(event_handler, path)
     observer.start()
     
     try:

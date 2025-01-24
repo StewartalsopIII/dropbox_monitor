@@ -59,4 +59,33 @@
 - Recovery procedures
 
 ## Ongoing Observations
+
+### Event Monitoring Insights
+When using watchdog for file system monitoring, we discovered several critical insights about recursive monitoring:
+
+1. The recursive flag in observer.schedule(event_handler, path, recursive=True) can cause infinite processing loops when:
+   - The monitored directory contains subdirectories that are modified by the same process
+   - New files are created in watched directories as part of the processing
+   - The process creates new directories within the watched path
+
+2. Practical Impact:
+   - Creating transcript folders within the watched directory triggered new events
+   - These events caused new processing attempts
+   - Each attempt created nested "transcripts" folders
+   - Led to paths like "transcripts/transcripts/file.txt"
+
+3. Solution:
+   - Removed recursive=True flag from observer.schedule()
+   - This prevents monitoring of subdirectories
+   - Processing now happens only in the root directory
+   - Eliminates the infinite loop of event handling
+
+4. Lessons Learned:
+   - Always carefully consider the scope of file system monitoring
+   - Be cautious with recursive monitoring when the process modifies the watched directory
+   - Use absolute paths and proper path filtering
+   - Implement clear boundaries between watched and output directories
+
+These insights have significantly improved the stability and reliability of our audio processing system by preventing recursive processing loops and nested folder creation.
+
 _(Add new learnings as we implement and test)_

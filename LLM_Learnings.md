@@ -90,6 +90,45 @@ These insights have significantly improved the stability and reliability of our 
 
 _(Add new learnings as we implement and test)_
 
+## Audio Chunk Size Management (2025-01-24)
+
+### Chunk Size Optimization Insights
+1. Codec preservation is crucial:
+   - Using `-c copy` in ffmpeg maintains original file size
+   - Converting to uncompressed PCM (WAV) causes ~3x size inflation
+   - Original codecs (like M4A) provide better size efficiency
+
+2. Size estimation strategy:
+   - Calculate bytes_per_second from original file
+   - Use this ratio to predict chunk sizes before splitting
+   - Target middle of allowed range (10-15MB) for optimal splits
+   - Account for potential codec variations
+
+3. Split point selection approach:
+   - Create evenly spaced target points based on desired chunk size
+   - Find closest silence points to these targets
+   - Validate each potential split for size constraints
+   - Handle edge cases (too small/large chunks) with merging
+
+4. Key metrics discovered:
+   - M4A files: ~0.0275 MB/second at standard quality
+   - Optimal chunk duration: ~436 seconds for 12MB target
+   - Natural silence points every 2-3 minutes
+   - Size prediction accuracy within 2-3%
+
+5. Validation improvements:
+   - Log detailed size metrics for each chunk
+   - Track both duration and size ratios
+   - Verify total output size matches input
+   - Monitor size distribution across chunks
+
+These insights led to a more robust chunking system that:
+- Maintains minimum chunk size (10MB)
+- Generally stays under maximum (15MB)
+- Preserves audio quality
+- Uses natural break points
+- Keeps original compression
+
 ## Transcript Formatting Implementation (2025-01-24)
 
 ### TranscriptFormatter Class Decision

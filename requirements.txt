@@ -1,6 +1,7 @@
 watchdog
 google-generativeai
 python-dotenv
+tqdm
 
 # System Requirements
 # ------------------

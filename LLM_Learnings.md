@@ -14,7 +14,7 @@
 
 ### Quality Considerations
 - Silence detection improves chunk boundaries
-- Speaker transitions make good split points
+- Using natural break points improves transcription quality
 - Metadata preservation is crucial for reassembly
 
 ## Design Decisions
@@ -48,7 +48,6 @@
 
 ### Transcription Quality
 - Include overlap between chunks
-- Verify speaker consistency
 - Track timing information
 - Validate reassembly points
 
@@ -58,9 +57,7 @@
 - Detailed error logging
 - Recovery procedures
 
-## Ongoing Observations
-
-### Event Monitoring Insights
+## Event Monitoring Insights
 When using watchdog for file system monitoring, we discovered several critical insights about recursive monitoring:
 
 1. The recursive flag in observer.schedule(event_handler, path, recursive=True) can cause infinite processing loops when:
@@ -86,6 +83,81 @@ When using watchdog for file system monitoring, we discovered several critical i
    - Use absolute paths and proper path filtering
    - Implement clear boundaries between watched and output directories
 
-These insights have significantly improved the stability and reliability of our audio processing system by preventing recursive processing loops and nested folder creation.
+## Audio Chunk Size Management (2025-01-24)
 
-_(Add new learnings as we implement and test)_
+### Chunk Size Optimization Insights
+1. Codec preservation is crucial:
+   - Using `-c copy` in ffmpeg maintains original file size
+   - Converting to uncompressed PCM (WAV) causes ~3x size inflation
+   - Original codecs (like M4A) provide better size efficiency
+
+2. Size estimation strategy:
+   - Calculate bytes_per_second from original file
+   - Use this ratio to predict chunk sizes before splitting
+   - Target middle of allowed range (10-15MB) for optimal splits
+   - Account for potential codec variations
+
+3. Split point selection approach:
+   - Create evenly spaced target points based on desired chunk size
+   - Find closest silence points to these targets
+   - Validate each potential split for size constraints
+   - Handle edge cases (too small/large chunks) with merging
+
+4. Key metrics discovered:
+   - M4A files: ~0.0275 MB/second at standard quality
+   - Optimal chunk duration: ~436 seconds for 12MB target
+   - Natural silence points every 2-3 minutes
+   - Size prediction accuracy within 2-3%
+
+5. Validation improvements:
+   - Log detailed size metrics for each chunk
+   - Track both duration and size ratios
+   - Verify total output size matches input
+   - Monitor size distribution across chunks
+
+These insights led to a more robust chunking system that:
+- Maintains minimum chunk size (10MB)
+- Generally stays under maximum (15MB)
+- Preserves audio quality
+- Uses natural break points
+- Keeps original compression
+
+## Transcript Formatting Implementation (2025-01-24)
+
+### TranscriptFormatter Class Decision
+We decided to create a dedicated TranscriptFormatter class because:
+1. Separation of concerns - isolates formatting logic from file processing
+2. Improves testability of formatting features
+3. Makes future format changes more manageable
+4. Can be reused across different monitoring scripts
+5. Maintains clean, consistent formatting across all transcripts
+
+### Implementation Progress (2025-01-24)
+1. Created TranscriptFormatter class with comprehensive unit tests
+2. Successfully integrated formatter into both monitor scripts
+3. Enhanced metadata handling:
+   - Audio monitor includes: file info, size, timestamp
+   - Dropbox monitor adds: meeting name, file info, size, timestamp
+4. Changed transcript extension from .txt to .md
+5. Maintained backward compatibility with existing components
+
+### Key Learnings from Task 1 Implementation
+1. Breaking the formatter into a separate class proved valuable for:
+   - Clean code organization
+   - Easy testing of formatting logic
+   - Simple integration into both monitor scripts
+   
+2. Testing before integration helped catch issues early:
+   - Unit tests verified all formatting scenarios
+   - Ensured consistent markdown output
+   - Validated metadata handling
+   
+3. Maintaining existing functionality while adding new features:
+   - Kept original audio processing intact
+   - Only changed file extension and output format
+   - Preserved all logging and error handling
+   
+4. Metadata handling improvements:
+   - Different metadata for each monitor type
+   - Consistent formatting across all outputs
+   - Enhanced transcript searchability and organization

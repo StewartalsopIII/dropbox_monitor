@@ -1,114 +1,239 @@
-# Audio Processing Enhancement Plan
+# Dropbox Monitor Reorganization Plan
 
-## Task 1: Convert Transcripts to Markdown Format
-**Purpose**: Switch transcript output from .txt to .md format for better readability and formatting
-**Steps**:
-1. Update file extension handling:
-   - Modify transcript_path creation in both monitor scripts
-   - Change `.txt` extension to `.md`
-   - Update relevant logging messages
-2. Add markdown formatting:
-   - Add metadata header section (timestamp, speakers, etc.)
-   - Format speaker lines with markdown syntax
-   - Handle emphasis and formatting markers
+## Overview
 
-**Validation Criteria**:
-- [ ] All new transcripts save as .md files
-- [ ] Markdown formatting preserved in output
-- [ ] Existing functionality remains intact
-- [ ] Logging correctly reflects new file type
+This plan outlines the reorganization of the Dropbox Monitor codebase into a cleaner pipeline architecture while maintaining all existing functionality. The reorganization will be performed incrementally with thorough validation at each step.
 
-## Task 2: Implement Google Cloud Speaker Diarization
-**Purpose**: Add speaker identification using Google Cloud Speech-to-Text API
-**Steps**:
-1. Set Up Google Cloud:
-   - Create Google Cloud project 
-   - Enable Speech-to-Text API
-   - Set up authentication credentials
-   - Install google-cloud-speech package
+## Current Structure
 
-2. Create AudioDiarizer class:
-   - Initialize with Google credentials
-   - Implement long-running audio processing
-   - Handle speaker diarization results
-   - Add retry and error handling
+```
+dropbox_monitor/
+├── audio_chunker.py
+├── audio_monitor.py
+├── debug_chunker.py
+├── dropbox_monitor.py
+├── speaker_diarizer.py
+├── test_audio_chunker.py
+├── test_speaker_diarizer.py
+├── test_transcript_formatter.py
+├── title_analyzer.py
+└── transcript_formatter.py
+```
 
-3. Speaker Recognition Flow:
-   - Upload audio to Google Cloud Storage
-   - Configure diarization parameters
-   - Process audio for speaker recognition
-   - Parse diarization results
-   - Map speaker labels to timestamps
-   - Store speaker metadata
+## Target Structure
 
-4. Integrate with AudioChunker:
-   - Process audio before chunking
-   - Associate speaker data with chunks
-   - Update transcript formatting
-   - Add speaker labels to output
+```
+dropbox_monitor/
+├── common/
+│   ├── __init__.py
+│   ├── config.py
+│   └── utils.py
+├── input/
+│   ├── __init__.py
+│   ├── file_handler.py
+│   └── monitor.py
+├── processing/
+│   ├── __init__.py
+│   ├── chunker.py
+│   ├── diarizer.py
+│   └── transcriber.py
+├── output/
+│   ├── __init__.py
+│   ├── analyzer.py
+│   └── formatter.py
+└── tests/
+    ├── __init__.py
+    ├── test_input/
+    ├── test_processing/
+    └── test_output/
+```
 
-**Validation Criteria**:
-- [ ] Successful Google Cloud API integration
-- [ ] Accurate speaker differentiation
-- [ ] Proper timestamp alignment
-- [ ] Clean speaker label formatting
-- [ ] Error handling for API limits
+## Phase 1: Setup and Common Utilities
+**Timeframe**: Day 1-2
 
-## Testing Plan
-1. Test different audio scenarios:
-   - Various file sizes
-   - Multiple speakers
-   - Different introduction formats
-   - Various recording qualities
+### Task 1.1: Create Directory Structure
+1. Create new directories while preserving existing files
+2. Add __init__.py files
+3. Update .gitignore for new structure
+4. Create placeholder files
 
-2. Verify integration points:
-   - Diarization accuracy
-   - Chunking boundaries
-   - Speaker consistency
-   - Timing alignment
+**Validation**:
+- Directory structure matches target
+- Git ignores appropriate files
+- No functionality changes
+- All tests pass
 
-## Task 3: Fix Chunk Size Management
-**Purpose**: Ensure consistent and properly sized chunks during audio splitting
-**Steps**:
-1. Revise silence point selection:
-   - Calculate expected chunk sizes before splitting
-   - Filter silence points to maintain max chunk size
-   - Implement backup splitting if silence points create oversized chunks
-   - Add size validation checks
+### Task 1.2: Extract Common Utilities
+1. Create common/config.py
+   - Move environment loading
+   - Create shared configuration
+   - Maintain backwards compatibility
+2. Create common/utils.py
+   - Move logging setup
+   - Preserve existing log formats
+3. Update imports in existing files
 
-2. Improve size estimation:
-   - Create accurate audio duration to file size mapping
-   - Calculate WAV file size based on audio parameters
-   - Implement proper chunk size prediction
-   - Add safety margin to prevent oversized chunks
+**Validation**:
+- Environment variables load correctly
+- Logging works as before
+- All tests pass
+- No changes to output
 
-3. Add validation layer:
-   - Verify chunk sizes after splitting
-   - Implement re-splitting for oversized chunks
-   - Add logging for chunk size validation
-   - Create size distribution metrics
+## Phase 2: Input Stage
+**Timeframe**: Day 3-4
 
-**Validation Criteria**:
-- [ ] All chunks maintain size under 15MB
-- [ ] Chunks split at natural silence points when possible
-- [ ] Accurate size prediction before splitting
-- [ ] Detailed logging of chunk size distribution
+### Task 2.1: Create File Handler
+1. Create input/file_handler.py
+   - Move file system operations
+   - Maintain existing file type support
+   - Preserve validation checks
+2. Update existing monitors to use new handler
+3. Keep original files until validation complete
 
-## Success Metrics
-1. Accurate speaker identification
-2. Consistent markdown formatting
-3. Clean file management
-4. Preserved audio quality
-5. Accurate progress reporting
+**Validation**:
+- File detection works
+- All supported formats process
+- Error handling unchanged
+- Tests pass
 
-## Implementation Notes
-- Use pyannote.audio for diarization
-- Maintain original audio quality
-- Preserve all metadata
-- Handle error cases gracefully
+### Task 2.2: Unify Monitoring
+1. Create input/monitor.py
+   - Implement base monitor class
+   - Preserve both monitoring strategies
+   - Maintain existing event handling
+2. Update main entry points
 
-## Next Steps
-1. Implement markdown conversion
-2. Create AudioDiarizer class
-3. Integrate with existing chunking
-4. Add comprehensive testing
+**Validation**:
+- Both monitoring modes work
+- Event handling unchanged
+- Directory watching intact
+- All tests pass
+
+## Phase 3: Processing Stage
+**Timeframe**: Day 5-6
+
+### Task 3.1: Audio Processing
+1. Create processing/chunker.py
+   - Move AudioChunker class
+   - Maintain chunk size logic
+   - Preserve ffmpeg integration
+2. Create processing/transcriber.py
+   - Move transcription logic
+   - Keep API integration intact
+3. Create processing/diarizer.py
+   - Move speaker detection
+   - Preserve mapping logic
+
+**Validation**:
+- Chunking works as before
+- Transcription quality unchanged
+- Speaker detection accurate
+- All tests pass
+
+## Phase 4: Output Stage
+**Timeframe**: Day 7-8
+
+### Task 4.1: Output Processing
+1. Create output/formatter.py
+   - Move TranscriptFormatter
+   - Preserve markdown formatting
+2. Create output/analyzer.py
+   - Move TitleAnalyzer
+   - Maintain analysis pipeline
+
+**Validation**:
+- Output format unchanged
+- Analysis quality maintained
+- File organization preserved
+- All tests pass
+
+## Phase 5: Testing and Documentation
+**Timeframe**: Day 9-10
+
+### Task 5.1: Test Suite Organization
+1. Move tests to new structure
+2. Update import paths
+3. Add integration tests
+4. Preserve all test cases
+
+**Validation**:
+- All tests pass
+- Coverage maintained
+- No functionality changes
+
+### Task 5.2: Documentation
+1. Update README.md
+2. Document new structure
+3. Update configuration guide
+4. Add migration notes
+
+## Rollback Plan
+
+Each phase has a specific rollback point:
+
+1. **Before Phase 1**:
+   - Full repository backup
+   - Branch for each phase
+
+2. **During Changes**:
+   - Keep original files until validation
+   - Use feature branches
+   - Commit after each step
+
+3. **Failure Response**:
+   - Revert to last working commit
+   - Restore from backup if needed
+   - Document failure for future reference
+
+## Success Criteria
+
+- All existing functionality works exactly as before
+- No changes to output format or quality
+- All tests pass
+- No new dependencies required
+- Logging and error handling preserved
+- File paths and monitoring unchanged
+
+## Testing Procedure
+
+1. Before each change:
+   - Run full test suite
+   - Process sample files
+   - Save output samples
+
+2. After each change:
+   - Run tests again
+   - Compare new output with samples
+   - Verify logging and errors
+
+3. Final validation:
+   - Process all test files
+   - Compare all outputs
+   - Verify directory structure
+   - Check git status
+
+## Dependencies
+
+- Python 3.8+
+- ffmpeg
+- All current pip packages
+- Google Cloud credentials
+- Test audio files
+
+## Timeline
+
+1. **Days 1-2**: Phase 1
+2. **Days 3-4**: Phase 2
+3. **Days 5-6**: Phase 3
+4. **Days 7-8**: Phase 4
+5. **Days 9-10**: Phase 5
+
+## Notes
+
+- No changes to core functionality
+- Preserve all existing behaviors
+- Keep working code unchanged
+- Focus on organization only
+- Document everything
+- Test thoroughly
+- Allow for easy rollback

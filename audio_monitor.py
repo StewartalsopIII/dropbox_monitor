@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from title_analyzer import TitleAnalyzer
 from audio_chunker import AudioChunker
 from transcript_formatter import TranscriptFormatter
+from speaker_diarizer import SpeakerDiarizer
 from tqdm import tqdm
 
 # Load environment variables
@@ -37,6 +38,7 @@ class AudioTranscriptionHandler(FileSystemEventHandler):
         self.model = genai.GenerativeModel('gemini-1.5-pro')
         self.title_analyzer = TitleAnalyzer(self.model)
         self.transcript_formatter = TranscriptFormatter()
+        self.speaker_diarizer = SpeakerDiarizer()
         
     def on_created(self, event):
         if event.is_directory:
@@ -120,6 +122,7 @@ class AudioTranscriptionHandler(FileSystemEventHandler):
                 if was_chunked:
                     logging.info(f"File split into {len(chunk_paths)} chunks for processing")
                     transcriptions = []
+                    speaker_context = None
                     
                     # Process each chunk
                     for i, chunk_path in enumerate(chunk_paths):
@@ -129,12 +132,22 @@ class AudioTranscriptionHandler(FileSystemEventHandler):
                         
                         # Upload and transcribe the chunk
                         audio_file = genai.upload_file(chunk_path)
-                        parts = [
-                            audio_file,
-                            "Please transcribe this audio. Provide ONLY the transcription, nothing else."
-                        ]
+                        
+                        # Add speaker context if available
+                        prompt = ["Please transcribe this audio. Maintain existing speaker labels and formatting."]
+                        if speaker_context and i > 0:
+                            prompt.append(f"Previous speakers were: {', '.join(speaker_context)}")
+                        
+                        parts = [audio_file] + prompt
                         response = self.model.generate_content(parts)
-                        transcriptions.append(response.text)
+                        transcription = response.text
+                        
+                        # Update speaker context from this chunk
+                        segments, mapping = self.speaker_diarizer.process_transcript(transcription)
+                        if mapping:
+                            speaker_context = list(mapping.values())
+                        
+                        transcriptions.append(transcription)
                     
                     # Combine transcriptions with double newlines between chunks
                     return "\n\n".join(transcriptions)
@@ -196,11 +209,17 @@ class AudioTranscriptionHandler(FileSystemEventHandler):
             # Get transcription
             transcription = self.transcribe_audio(wav_file_to_process)
             
+            # Process speaker diarization
+            segments, speaker_mapping = self.speaker_diarizer.process_transcript(transcription)
+            speaker_metadata = self.speaker_diarizer.format_metadata(speaker_mapping)
+            
             # Format and save transcription
             metadata = {
                 "File": filename,
                 "Size": f"{file_size / 1024 / 1024:.2f} MB",
-                "Processed": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                "Processed": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                "speaker_mapping": speaker_mapping,
+                **speaker_metadata
             }
             formatted_transcript = self.transcript_formatter.format_transcript(
                 transcription, metadata)

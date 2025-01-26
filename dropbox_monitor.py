@@ -7,11 +7,11 @@ import shutil
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from datetime import datetime
-import google.generativeai as genai
+from google.cloud import speech
 import subprocess
 from dotenv import load_dotenv
-from title_analyzer import TitleAnalyzer
 from transcript_formatter import TranscriptFormatter
+from speaker_diarizer import SpeakerDiarizer
 from tqdm import tqdm
 
 # Load environment variables
@@ -27,15 +27,15 @@ logging.basicConfig(
     ]
 )
 
-# Initialize Google AI
-genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+# Initialize Google Cloud Speech-to-Text client
+speech_client = speech.SpeechClient()
 
 class TranscriptionHandler(FileSystemEventHandler):
     def __init__(self):
         self.processing_files = set()
-        self.model = genai.GenerativeModel('gemini-1.5-pro')
-        self.title_analyzer = TitleAnalyzer(self.model)
         self.transcript_formatter = TranscriptFormatter()
+        self.speaker_diarizer = SpeakerDiarizer()
+        self.speaker_diarizer = SpeakerDiarizer()
         
     def on_created(self, event):
         if event.is_directory:
@@ -106,32 +106,49 @@ class TranscriptionHandler(FileSystemEventHandler):
             raise
 
     def transcribe_audio(self, wav_path):
-        """Transcribe audio using Google Gemini Pro."""
+        """Transcribe audio using Google Cloud Speech-to-Text."""
         try:
             # Get file size
             file_size = os.path.getsize(wav_path)
-            logging.info(f"Uploading audio file ({file_size / 1024 / 1024:.2f} MB)...")
+            logging.info(f"Processing audio file ({file_size / 1024 / 1024:.2f} MB)...")
             
-            # Upload the file using the File API
-            audio_file = genai.upload_file(wav_path)
-            logging.info("Upload complete. Starting transcription...")
+            # Read the audio file
+            with open(wav_path, 'rb') as audio_file:
+                content = audio_file.read()
             
-            # Create content parts using the file reference
-            parts = [
-                audio_file,
-                "Please transcribe this audio. Provide ONLY the transcription, nothing else."
-            ]
+            audio = speech.RecognitionAudio(content=content)
+            config = speech.RecognitionConfig(
+                encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+                sample_rate_hertz=44100,
+                language_code="en-US",
+                enable_speaker_diarization=True,
+                diarization_speaker_count=2  # Assumes 2 speakers for meeting
+            )
             
-            # Generate transcription
-            response = self.model.generate_content(parts)
-            return response.text
+            # Perform the transcription
+            response = speech_client.recognize(config=config, audio=audio)
+            
+            # Process speaker diarization
+            transcript = []
+            for result in response.results:
+                alternative = result.alternatives[0]
+                
+                # Extract speaker tags
+                for word in alternative.words:
+                    speaker_tag = word.speaker_tag
+                    speaker = f"Speaker {speaker_tag}"
+                    content = word.word
+                    
+                    # Start new line for new speaker
+                    if not transcript or transcript[-1].startswith(f"{speaker}:"):
+                        transcript.append(f"{speaker}: {content}")
+                    else:
+                        transcript[-1] += f" {content}"
+            
+            return "\n".join(transcript)
             
         except Exception as e:
-            if "Request payload size exceeds the limit" in str(e):
-                logging.error(f"File is too large to process. Maximum size is 20MB.")
-                logging.error(f"Consider splitting the audio file into smaller segments.")
-            else:
-                logging.error(f"Transcription error: {str(e)}")
+            logging.error(f"Transcription error: {str(e)}")
             raise
 
     def process_audio_file(self, file_path):
@@ -167,12 +184,18 @@ class TranscriptionHandler(FileSystemEventHandler):
             # Get transcription
             transcription = self.transcribe_audio(wav_path)
             
+            # Process speaker diarization
+            segments, speaker_mapping = self.speaker_diarizer.process_transcript(transcription)
+            speaker_metadata = self.speaker_diarizer.format_metadata(speaker_mapping)
+            
             # Format and save transcription
             metadata = {
                 "Meeting": os.path.basename(meeting_folder),
                 "File": filename,
                 "Size": f"{file_size / 1024 / 1024:.2f} MB",
-                "Processed": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                "Processed": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                "speaker_mapping": speaker_mapping,
+                **speaker_metadata
             }
             formatted_transcript = self.transcript_formatter.format_transcript(
                 transcription, metadata)

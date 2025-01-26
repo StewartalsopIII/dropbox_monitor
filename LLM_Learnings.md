@@ -90,6 +90,206 @@ These insights have significantly improved the stability and reliability of our 
 
 _(Add new learnings as we implement and test)_
 
+## Transcription API Migration (2025-01-26)
+
+### Initial Implementation Issue
+1. Started with Google's Gemini API for transcription
+   - Wrong tool for the job
+   - Gemini is for generative AI, not speech-to-text
+   - Would have led to unreliable transcriptions
+
+### Migration to Speech-to-Text
+1. Changed to Google Cloud Speech-to-Text
+   - Proper API for audio transcription
+   - Built-in speaker diarization support
+   - Better handling of audio formats
+   - More accurate for long-form content
+
+2. Code Architecture Improvements
+   - Separated speaker detection from transcription
+   - Created dedicated speaker_diarizer.py
+   - Pattern-based speaker identification remains useful
+   - Maintained clean separation of concerns
+
+3. Dependency Management
+   - Removed google-generativeai dependency
+   - Added google-cloud-speech
+   - No changes needed to ffmpeg requirements
+   - Virtual environment setup preserved
+
+4. API Differences
+   - Gemini used simple file upload
+   - Speech-to-Text requires proper audio configs
+   - Speaker diarization is built into API
+   - Better chunk handling for large files
+
+### Key Design Decisions
+1. Why separate speaker_diarizer.py?
+   - Works with both Speech-to-Text and text-based detection
+   - Can enhance API's speaker detection
+   - Maintains consistent speaker mapping
+   - Easy to test independently
+
+2. Audio Processing Strategy
+   - Keep chunking for large files
+   - Use API's native speaker detection
+   - Fall back to pattern matching when needed
+   - Preserve timing information
+
+3. Error Handling
+   - Better type validation
+   - Specific error messages for credential issues
+   - Clear logging of transcription status
+   - Proper cleanup of temporary files
+
+### Next Steps
+1. Google Cloud Setup
+   - Project creation
+   - API enablement
+   - Service account configuration
+   - Local credential management
+
+2. Testing Needed
+   - Various audio formats
+   - Different speaker scenarios
+   - Large file handling
+   - Error conditions
+
+## Failed Migration to pyannote.audio (2025-01-25)
+
+### What We Tried
+1. Attempted to migrate from Vosk to pyannote.audio for speaker diarization
+2. Updated code infrastructure with new package dependencies
+3. Aimed to improve speaker identification accuracy
+
+### Why It Failed
+1. Dependencies Management Issues:
+   - Failed to properly handle virtual environment setup
+   - Torch installation complications on Apple Silicon
+   - Complex dependency chain (torch -> pyannote.audio)
+   - Didn't properly test environment setup before code changes
+
+2. Migration Strategy Problems:
+   - Replaced working code before validating new solution
+   - Broke existing functionality without fallback plan
+   - Didn't do staged rollout (keeping old code while testing new)
+   - Failed to verify package compatibilities up front
+
+3. Implementation Issues:
+   - Didn't account for Apple Silicon-specific requirements
+   - Assumed pip availability without checking environment
+   - Made too many changes at once instead of incremental updates
+
+### Lessons Learned
+1. Environment First:
+   - Always verify environment setup before code changes
+   - Test package installations in isolation
+   - Document specific environment requirements
+   - Create test environment before production changes
+
+2. Migration Best Practices:
+   - Keep old implementation while testing new one
+   - Use feature flags to switch between implementations
+   - Test new code in parallel with old system
+   - Plan rollback strategy before making changes
+
+3. Platform Specifics:
+   - Consider platform-specific package requirements (M1/M2)
+   - Test on target architecture before deployment
+   - Document platform-specific setup steps
+   - Maintain separate requirements for different platforms
+
+### Next Steps
+1. Properly set up virtual environment first
+2. Test torch installation for Apple Silicon
+3. Validate pyannote.audio installation in isolation
+4. Create parallel implementation without removing Vosk
+5. Add feature flag to switch between implementations
+6. Test both systems before final migration
+
+## VOSK Implementation Failures (2025-01-24/25)
+
+### Initial Attempts
+1. Tried direct VOSK implementation:
+   ```
+   2025-01-25 13:31:38,402 - Starting monitoring of: /Users/.../Audio Test
+   2025-01-25 13:31:38,403 - Waiting for new audio files...
+   2025-01-25 13:31:38,677 - An error occurred: Vosk model not found. Please set VOSK_MODEL_PATH environment variable or provide model_path in constructor.
+   ```
+   - Even with model path set in .env
+   - Even with model downloaded and extracted
+
+2. Speaker Identification Issues:
+   - Test file "Iván Vendrov.m4a" (89.21 MB) split into 36 chunks
+   - Failed to identify speakers correctly
+   - Default to "SPEAKER_0" and "SPEAKER_1" without proper mapping
+   - Evidence in log:
+   ```
+   2025-01-24 18:36:39,110 - DEBUG - File duration: 3245.80s, MB/second: 0.0275
+   2025-01-24 18:36:41,376 - DEBUG - Found 35 silence points
+   2025-01-24 18:38:05,247 - DEBUG - Total size of chunks: 273.02 MB (Original: 89.21 MB)
+   ```
+
+3. Chunk Size Management Issues:
+   - Original file inflated from 89.21 MB to 273.02 MB
+   - Caused by WAV conversion and improper chunk management
+   - Led to chunking strategy optimization attempts:
+   ```
+   2025-01-24 19:44:44,883 - Waiting for new audio files...
+   2025-01-24 19:45:00,498 - Performing speaker diarization...
+   2025-01-24 19:47:47,275 - Identified speakers: {'SPEAKER_0': 'Stewart Alsop', 'SPEAKER_1': 'Guest Speaker SPEAKER_1'}
+   ```
+
+### Discovered VOSK Limitations
+1. Model Dependency Issues:
+   - Required large model downloads
+   - Inconsistent model path handling
+   - Environment variable setup problems
+   - Model quality vs. file size tradeoffs
+
+2. Speaker Diarization Quality:
+   - Poor speaker segmentation
+   - Limited to binary speaker identification
+   - No support for overlapping speech
+   - Inconsistent results across different audio qualities
+
+3. Resource Management:
+   - Memory leaks in long-running processes
+   - File size inflation during processing
+   - Poor handling of large audio files
+   - Inefficient chunk processing
+
+### VOSK vs. pyannote.audio Tradeoffs
+| Feature | VOSK | pyannote.audio |
+|---------|------|----------------|
+| Setup Complexity | Lower | Higher |
+| Model Size | Smaller | Larger |
+| Accuracy | Lower | Higher |
+| Resource Usage | Lower | Higher |
+| Speaker Count | Limited | Flexible |
+| Platform Support | Better | Mixed |
+| Documentation | Limited | Better |
+| Commercial Use | Free | Licensed |
+
+### Key Insights for Future Development
+1. Model Management:
+   - Need better model version control
+   - Automated model download and setup
+   - Platform-specific model paths
+   - Fallback options for model failures
+
+2. Audio Processing:
+   - Implement proper WAV conversion strategy
+   - Better chunk size management
+   - Handle various audio formats properly
+   - Maintain quality during processing
+
+3. Error Handling:
+   - Better error messages for setup issues
+   - Graceful fallbacks for diarization failures
+   - Handle environment misconfiguration
+   - Provide clear setup instructions
+
 ## Audio Chunk Size Management (2025-01-24)
 
 ### Chunk Size Optimization Insights
@@ -168,3 +368,114 @@ We decided to create a dedicated TranscriptFormatter class because:
    - Different metadata for each monitor type
    - Consistent formatting across all outputs
    - Enhanced transcript searchability and organization
+
+   ## Google Cloud Speech-to-Text Implementation (2025-01-26)
+
+### Setup Process Completed
+1. Created Google Cloud Project for audio transcription
+2. Enabled Speech-to-Text API
+3. Created service account with Cloud Speech Client role
+4. Downloaded and securely stored credentials
+5. Configured environment with GOOGLE_APPLICATION_CREDENTIALS
+
+### Key Configuration Details
+- Service Account: dropbox-audio-transcription
+- Role: Cloud Speech Client (minimal permissions)
+- Credentials stored in: ./credentials/service-account.json
+- Environment variable set in .env file
+
+### Best Practices Implemented
+1. Secure credential storage:
+   - Credentials in separate directory
+   - Added to .gitignore
+   - Using relative paths
+2. Minimal permissions:
+   - Used Cloud Speech Client role
+   - Avoided administrator access
+3. Environment Configuration:
+   - Used existing .env file
+   - Maintained separation of concerns
+
+### Next Steps
+1. Test transcription with sample audio
+2. Implement error handling
+3. Add retry logic for API calls
+4. Update documentation
+
+## Speaker Diarization Challenges (2025-01-26)
+
+### Implementation Issues Discovered
+1. Name Extraction Patterns:
+   - Introduction patterns ("Hi, I'm [name]") are too rigid
+   - Not all conversations have clear introductions
+   - Names may be mentioned contextually rather than formally
+   - Need more flexible pattern matching
+
+2. Formatting Interference:
+   - Markdown formatting (e.g., `****Stewart Alsop**`) breaks pattern matching
+   - Text processing should handle various formatting artifacts
+   - Need to strip formatting before pattern matching
+   - Consider standardizing format before processing
+
+3. Context Management:
+   - Speaker identification lost between audio chunks
+   - Context not properly maintained across file splits
+   - Need better state management between chunks
+   - Consider persistent speaker mapping across session
+
+4. Configuration Limitations:
+   - Pre-configured speaker lists too restrictive
+   - Current approach only works for known host
+   - Need dynamic speaker discovery
+   - Consider machine learning for speaker identification
+
+5. Technical Limitations:
+   - Pure text-based approach insufficient
+   - Missing audio-based voice differentiation
+   - No way to handle overlapping speakers
+   - Limited to sequential speaker identification
+
+### Future Improvements
+1. Pattern Matching:
+   - Implement fuzzy matching for names
+   - Add contextual name extraction
+   - Support multiple name formats
+   - Handle informal introductions
+
+2. Context Handling:
+   - Implement persistent speaker context
+   - Add cross-chunk reference system
+   - Maintain speaker history
+   - Support session-level speaker mapping
+
+3. Format Processing:
+   - Add pre-processing for markdown cleanup
+   - Standardize text format before analysis
+   - Handle various text encodings
+   - Add format-specific handlers
+
+4. Speaker Management:
+   - Implement dynamic speaker discovery
+   - Add speaker verification system
+   - Support unknown speaker handling
+   - Allow manual speaker mapping correction
+
+5. Audio Integration:
+   - Consider hybrid text/audio approach
+   - Add basic voice fingerprinting
+   - Support speaker overlap detection
+   - Implement voice-based verification
+
+### Key Insights
+1. Text-only diarization is insufficient for robust speaker identification
+2. Need balance between pattern rigidity and flexibility
+3. Context management crucial for accurate speaker tracking
+4. Pre-configuration limits real-world usability
+5. Format handling needs to be more robust
+
+These learnings suggest moving towards a hybrid approach combining:
+- Audio-based speaker differentiation
+- Text-based name extraction
+- Context-aware speaker tracking
+- Flexible pattern matching
+- Robust format handling

@@ -18,33 +18,41 @@
 - [ ] Existing functionality remains intact
 - [ ] Logging correctly reflects new file type
 
-## Task 2: Implement Speaker Diarization
-**Purpose**: Add speaker identification and mapping before chunking process
+## Task 2: Implement Google Cloud Speaker Diarization
+**Purpose**: Add speaker identification using Google Cloud Speech-to-Text API
 **Steps**:
-1. Create AudioDiarizer class:
-   - Implement using pyannote.audio
-   - Process full WAV file before chunking
-   - Generate speaker segments with timing
+1. Set Up Google Cloud:
+   - Create Google Cloud project 
+   - Enable Speech-to-Text API
+   - Set up authentication credentials
+   - Install google-cloud-speech package
 
-2. Speaker Identification Flow:
-   - Process complete WAV file for diarization
-   - Extract speaker segments and timing
-   - Identify introduction section
-   - Map "Speaker 1/2" to actual names
-   - Create consistent speaker mapping
+2. Create AudioDiarizer class:
+   - Initialize with Google credentials
+   - Implement long-running audio processing
+   - Handle speaker diarization results
+   - Add retry and error handling
+
+3. Speaker Recognition Flow:
+   - Upload audio to Google Cloud Storage
+   - Configure diarization parameters
+   - Process audio for speaker recognition
+   - Parse diarization results
+   - Map speaker labels to timestamps
    - Store speaker metadata
 
-3. Integrate with AudioChunker:
-   - Pass speaker timing data to chunker
-   - Preserve speaker segments during split
-   - Maintain speaker mapping across chunks
-   - Use existing silence detection
+4. Integrate with AudioChunker:
+   - Process audio before chunking
+   - Associate speaker data with chunks
+   - Update transcript formatting
+   - Add speaker labels to output
 
 **Validation Criteria**:
-- [ ] Accurate speaker identification
-- [ ] Consistent speaker mapping across chunks
-- [ ] Correct timing preservation
-- [ ] Clean handling of introduction sections
+- [ ] Successful Google Cloud API integration
+- [ ] Accurate speaker differentiation
+- [ ] Proper timestamp alignment
+- [ ] Clean speaker label formatting
+- [ ] Error handling for API limits
 
 ## Testing Plan
 1. Test different audio scenarios:

@@ -59,6 +59,7 @@ class TranscriptFormatter:
         # Split into lines and process each
         lines = content.strip().split('\n')
         
+        current_speaker = None
         for line in lines:
             if not line.strip():
                 continue
@@ -66,7 +67,22 @@ class TranscriptFormatter:
             # Try to detect speaker patterns
             if ':' in line:
                 speaker, text = line.split(':', 1)
-                formatted_lines.append(f"**{speaker.strip()}**:{text}")
+                speaker = speaker.strip()
+                text = text.strip()
+                
+                # Check if this is a new speaker
+                if speaker != current_speaker:
+                    current_speaker = speaker
+                    # Add extra line before new speaker except at start
+                    if formatted_lines:
+                        formatted_lines.append("")
+                        
+                # Format with speaker name in bold
+                if speaker in self.metadata.get("speaker_mapping", {}):
+                    mapped_name = self.metadata["speaker_mapping"][speaker]
+                    formatted_lines.append(f"**{mapped_name}**: {text}")
+                else:
+                    formatted_lines.append(f"**{speaker}**: {text}")
             else:
                 formatted_lines.append(line)
         

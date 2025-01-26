@@ -23,3 +23,6 @@ Audio Test/
 # Logs
 *.log
 .DS_Store
+
+# Credentials
+credentials/

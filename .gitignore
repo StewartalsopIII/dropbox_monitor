@@ -22,3 +22,4 @@ Audio Test/
 
 # Logs
 *.log
+.DS_Store

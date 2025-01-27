@@ -513,3 +513,105 @@ These learnings suggest moving towards a hybrid approach combining:
    - Path handling might need further abstraction
    - Could add more detailed file validation
    - Consider adding file type registry
+
+## Audio Chunker Migration (2025-01-27)
+
+### Successful Migration Strategy
+1. Modular Migration Path:
+   - Moved chunker class first while keeping original file
+   - Created new test structure before moving tests
+   - Updated imports to use new common.config
+   - Fixed tests incrementally after move
+
+2. Test-Driven Validation:
+   - Discovered missing test coverage for temp directory cleanup
+   - Found edge cases in silence point detection
+   - Improved error handling for invalid files
+   - Added explicit validation for audio file format
+
+3. Configuration Management:
+   - Centralized constants in Config class
+   - Used class-level defaults for chunk sizes
+   - Made silence duration configurable
+   - Preserved original constant values
+
+4. Error Handling Improvements:
+   - Added explicit validation for audio files
+   - Improved temp directory management
+   - Better exception handling for ffmpeg errors
+   - More descriptive error messages
+
+5. Key Decisions:
+   - Keep original file until full validation
+   - Use constructor defaults from Config
+   - Maintain existing chunking logic
+   - Preserve all logging messages
+
+6. Lessons Learned:
+   - Test failures revealed hidden dependencies
+   - Context manager needed explicit temp dir creation
+   - Silence point detection needed better test files
+   - Error handling needed more specific exceptions
+
+7. Benefits Observed:
+   - Cleaner dependency management
+   - More robust error handling
+   - Better test organization
+   - Maintainable configuration
+
+8. Future Notes:
+   - Consider error type standardization
+   - Add more comprehensive logging
+   - Implement retry mechanism for ffmpeg
+   - Add performance metrics tracking
+
+## Processing Stage Migration (2025-01-27)
+
+### Abstract Base Class Pattern Success
+1. Transcription Service Abstraction Benefits:
+   - Unified interface for different transcription services
+   - Easy to switch between Cloud Speech and Gemini Pro
+   - Simple to add new services in future
+   - Clean separation of chunking and transcription
+
+2. Testing Improvements:
+   - Mock classes revealed design flaws early
+   - Better separation made testing easier
+   - Could test each service independently
+   - Proper dependency injection through mocks
+
+3. Integration Insights:
+   - Keep imports optional using try/except
+   - Test each service with its own config
+   - Handle missing dependencies gracefully
+   - Preserve all existing functionality
+
+4. Migration Strategy Worked Well:
+   - Move code first, then add abstraction
+   - Keep original files until fully tested
+   - Update imports incrementally
+   - Test at each step
+
+5. Key Decisions that Helped:
+   - Abstract base class for transcription
+   - Service-specific configuration
+   - Consistent error handling
+   - Clean chunking integration
+
+6. Lessons for Future Work:
+   - Always consider multiple implementations
+   - Plan for service switching
+   - Keep dependencies optional
+   - Test with real and mock services
+
+7. Benefits Already Seen:
+   - Easier to maintain multiple services
+   - Cleaner code organization
+   - Better testing coverage
+   - More flexible configuration
+
+8. Future Improvements to Consider:
+   - Add more transcription services
+   - Implement service fallback
+   - Add performance monitoring
+   - Create service registry

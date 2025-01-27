@@ -2,7 +2,7 @@
 
 import unittest
 from datetime import datetime
-from transcript_formatter import TranscriptFormatter
+from output.formatter import TranscriptFormatter
 
 class TestTranscriptFormatter(unittest.TestCase):
     def setUp(self):

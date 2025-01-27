@@ -7,16 +7,17 @@ import shutil
 from watchdog.events import FileSystemEventHandler
 from input.monitor import AudioMonitor
 from datetime import datetime
-import google.generativeai as genai
 from tqdm import tqdm
+import google.generativeai as genai
 
 from common.config import Config, init_environment
 from common.utils import setup_logging
 from input.file_handler import AudioFileHandler
 from title_analyzer import TitleAnalyzer
-from audio_chunker import AudioChunker
+from processing.chunker import AudioChunker
 from transcript_formatter import TranscriptFormatter
-from speaker_diarizer import SpeakerDiarizer
+from processing.diarizer import SpeakerDiarizer
+from processing.transcriber import GeminiTranscriber
 
 # Initialize environment and logging
 init_environment()
@@ -27,11 +28,12 @@ genai.configure(api_key=Config.get_google_api_key())
 
 class AudioTranscriptionHandler(FileSystemEventHandler):
     def __init__(self):
-        self.model = genai.GenerativeModel('gemini-1.5-pro')
+        self.model = genai.GenerativeModel('gemini-pro')
         self.title_analyzer = TitleAnalyzer(self.model)
         self.transcript_formatter = TranscriptFormatter()
         self.speaker_diarizer = SpeakerDiarizer()
         self.file_handler = AudioFileHandler()
+        self.transcriber = GeminiTranscriber()
         
     def on_created(self, event):
         if event.is_directory:
@@ -64,63 +66,10 @@ class AudioTranscriptionHandler(FileSystemEventHandler):
 
     def transcribe_audio(self, wav_path):
         """
-        Transcribe audio using Google Gemini Pro.
-        Automatically handles file chunking for large files.
+        Transcribe audio using the configured transcription service.
         """
         try:
-            # Initialize chunker with 15MB max chunk size
-            with AudioChunker(max_chunk_size_mb=15.0) as chunker:
-                chunk_paths, was_chunked = chunker.chunk_audio(wav_path)
-                
-                if was_chunked:
-                    logging.info(f"File split into {len(chunk_paths)} chunks for processing")
-                    transcriptions = []
-                    speaker_context = None
-                    
-                    # Process each chunk
-                    for i, chunk_path in enumerate(chunk_paths):
-                        logging.info(f"Processing chunk {i+1}/{len(chunk_paths)}...")
-                        chunk_size = os.path.getsize(chunk_path) / (1024 * 1024)
-                        logging.info(f"Chunk size: {chunk_size:.2f} MB")
-                        
-                        # Upload and transcribe the chunk
-                        audio_file = genai.upload_file(chunk_path)
-                        
-                        # Add speaker context if available
-                        prompt = ["Please transcribe this audio. Maintain existing speaker labels and formatting."]
-                        if speaker_context and i > 0:
-                            prompt.append(f"Previous speakers were: {', '.join(speaker_context)}")
-                        
-                        parts = [audio_file] + prompt
-                        response = self.model.generate_content(parts)
-                        transcription = response.text
-                        
-                        # Update speaker context from this chunk
-                        segments, mapping = self.speaker_diarizer.process_transcript(transcription)
-                        if mapping:
-                            speaker_context = list(mapping.values())
-                        
-                        transcriptions.append(transcription)
-                    
-                    # Combine transcriptions with double newlines between chunks
-                    return "\n\n".join(transcriptions)
-                
-                else:
-                    # Process single file as before
-                    file_size = os.path.getsize(wav_path)
-                    logging.info(f"Uploading audio file ({file_size / 1024 / 1024:.2f} MB)...")
-                    
-                    audio_file = genai.upload_file(wav_path)
-                    logging.info("Upload complete. Starting transcription...")
-                    
-                    parts = [
-                        audio_file,
-                        "Please transcribe this audio. Provide ONLY the transcription, nothing else."
-                    ]
-                    
-                    response = self.model.generate_content(parts)
-                    return response.text
-            
+            return self.transcriber.transcribe_audio(wav_path)
         except Exception as e:
             logging.error(f"Transcription error: {str(e)}")
             raise

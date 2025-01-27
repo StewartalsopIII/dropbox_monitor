@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import unittest
-from speaker_diarizer import SpeakerDiarizer, SpeakerSegment
+from processing.diarizer import SpeakerDiarizer, SpeakerSegment
 from typing import Dict, List
 
 class TestSpeakerDiarizer(unittest.TestCase):

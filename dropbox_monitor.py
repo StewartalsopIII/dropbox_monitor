@@ -5,27 +5,25 @@ import os
 import shutil
 from input.monitor import AudioMonitor
 from datetime import datetime
-from google.cloud import speech
 from tqdm import tqdm
 
 from common.config import Config, init_environment
 from common.utils import setup_logging
 from input.file_handler import AudioFileHandler
 from transcript_formatter import TranscriptFormatter
-from speaker_diarizer import SpeakerDiarizer
+from processing.diarizer import SpeakerDiarizer
+from processing.transcriber import CloudSpeechTranscriber
 
 # Initialize environment and logging
 init_environment()
 setup_logging('transcript_processor.log')
-
-# Initialize Google Cloud Speech-to-Text client
-speech_client = speech.SpeechClient()
 
 class TranscriptionHandler(FileSystemEventHandler):
     def __init__(self):
         self.transcript_formatter = TranscriptFormatter()
         self.speaker_diarizer = SpeakerDiarizer()
         self.file_handler = AudioFileHandler()
+        self.transcriber = CloudSpeechTranscriber()
         
     def on_created(self, event):
         if event.is_directory:
@@ -60,46 +58,14 @@ class TranscriptionHandler(FileSystemEventHandler):
 
 
     def transcribe_audio(self, wav_path):
-        """Transcribe audio using Google Cloud Speech-to-Text."""
+        """Transcribe audio using the configured transcription service."""
         try:
-            # Get file size
+            # Get file size for logging
             file_size = os.path.getsize(wav_path)
             logging.info(f"Processing audio file ({file_size / 1024 / 1024:.2f} MB)...")
             
-            # Read the audio file
-            with open(wav_path, 'rb') as audio_file:
-                content = audio_file.read()
-            
-            audio = speech.RecognitionAudio(content=content)
-            config = speech.RecognitionConfig(
-                encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-                sample_rate_hertz=44100,
-                language_code="en-US",
-                enable_speaker_diarization=True,
-                diarization_speaker_count=2  # Assumes 2 speakers for meeting
-            )
-            
-            # Perform the transcription
-            response = speech_client.recognize(config=config, audio=audio)
-            
-            # Process speaker diarization
-            transcript = []
-            for result in response.results:
-                alternative = result.alternatives[0]
-                
-                # Extract speaker tags
-                for word in alternative.words:
-                    speaker_tag = word.speaker_tag
-                    speaker = f"Speaker {speaker_tag}"
-                    content = word.word
-                    
-                    # Start new line for new speaker
-                    if not transcript or transcript[-1].startswith(f"{speaker}:"):
-                        transcript.append(f"{speaker}: {content}")
-                    else:
-                        transcript[-1] += f" {content}"
-            
-            return "\n".join(transcript)
+            # Use the transcription service
+            return self.transcriber.transcribe_audio(wav_path)
             
         except Exception as e:
             logging.error(f"Transcription error: {str(e)}")

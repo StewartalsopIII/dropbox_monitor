@@ -90,6 +90,50 @@ These insights have significantly improved the stability and reliability of our 
 
 _(Add new learnings as we implement and test)_
 
+## Project Organization Learnings (2025-01-27)
+
+### Directory Structure Findings
+1. Logical vs Physical Organization:
+   - Separating functionality (common/input/processing) doesn't automatically lead to clean directory structure
+   - Need to consider both logical code organization AND physical file organization
+   - Current plan addressed logical but missed physical organization
+
+2. Migration State Issues:
+   - Partial migrations create confusing mixed states
+   - Test files split between root and tests/ directory
+   - Backup (.bak) files and logs scattered in root
+   - Cache directories cluttering workspace
+
+3. Path Dependencies:
+   - File movements affect import paths
+   - Test data locations need consistent structure
+   - Log file paths need centralization
+   - Configuration files need proper isolation
+
+### Key Insights
+1. Sequential Migration Plans:
+   - Complete one organizational goal before starting another
+   - Current plan should be completed before directory restructure
+   - Each restructure affects all path-dependent code
+
+2. Cleanup Strategy:
+   - Handle one type of file at a time (tests, logs, docs)
+   - Update all dependent paths before moving files
+   - Maintain working state throughout changes
+   - Clear separation between source, tests, and data
+
+3. Future Planning:
+   - Consider both logical and physical organization
+   - Plan should include path management
+   - Include steps for handling temporary files
+   - Consider deployment and maintenance impacts
+
+### Next Steps
+1. Complete current reorganization plan
+2. Create separate plan for directory restructure
+3. Handle one category at a time (src, tests, docs, etc.)
+4. Maintain functionality throughout changes
+
 ## Transcription API Migration (2025-01-26)
 
 ### Initial Implementation Issue
@@ -402,6 +446,50 @@ We decided to create a dedicated TranscriptFormatter class because:
 3. Add retry logic for API calls
 4. Update documentation
 
+## Code Organization Technical Debt (2025-01-27)
+
+### Phase Transition Issues
+1. Class Implementation Gaps:
+   - AudioTranscriber class missing from processing.transcriber
+   - Integration test reveals inconsistency between architecture and implementation
+   - Impact: Cannot run full test suite during Phase 5
+
+2. Source of Issues:
+   - Incremental architecture changes started in earlier phases
+   - File movement completed before implementation updates
+   - Test structure modernized ahead of underlying code
+
+3. Migration Status:
+   ```
+   Complete:
+   - Directory structure (/input, /output, /processing)
+   - Test organization (/tests with subdirectories)
+   - Integration test scaffolding
+
+   Incomplete:
+   - AudioTranscriber implementation
+   - Import path updates
+   - Full test suite validation
+   ```
+
+4. Decisions Made:
+   - Proceeding with Phase 5 documentation
+   - Acknowledging known implementation gaps
+   - Preserving test structure for future completion
+   - Maintaining clear separation between architectural and implementation concerns
+
+5. Next Steps:
+   - Complete documentation of new structure
+   - Document import paths for future updates
+   - Create tracking system for implementation gaps
+   - Plan separate implementation completion phase
+
+6. Lessons Learned:
+   - Implementation should track closely with architecture changes
+   - Test updates reveal gaps in underlying code
+   - Phase transitions need clearer completion criteria
+   - Consider smaller, atomic changes in future refactors
+
 ## Speaker Diarization Challenges (2025-01-26)
 
 ### Implementation Issues Discovered
@@ -615,3 +703,54 @@ These learnings suggest moving towards a hybrid approach combining:
    - Implement service fallback
    - Add performance monitoring
    - Create service registry
+
+## Output Stage Migration (2025-01-27)
+
+### Clean Migration Success
+1. Systematic Approach Benefits:
+   - Created new files before removing old ones
+   - Added tests before moving functionality
+   - Verified all features with test coverage
+   - Used git branch for safe development
+
+2. Test Coverage Expansion:
+   - Added missing tests for TitleAnalyzer
+   - Improved test clarity and organization
+   - Better error case coverage
+   - Mock model integration testing
+
+3. Validation Strategy:
+   - Run all tests before/after each change
+   - Keep original files until full validation
+   - Ensure identical output format
+   - Verify error handling paths
+
+4. Key Success Factors:
+   - Branch-based development
+   - Incremental file migration
+   - Comprehensive test coverage
+   - Clear rollback points
+
+5. Best Practices Validated:
+   - Create before delete
+   - Test before migration
+   - Validate before commit
+   - Document all changes
+
+6. Lessons Learned:
+   - Test mock models thoroughly
+   - Keep formatting consistent
+   - Maintain error handling
+   - Document class responsibilities
+
+7. Benefits Observed:
+   - Better organized codebase
+   - More comprehensive tests
+   - Clearer component boundaries
+   - Easier maintenance path
+
+8. Future Considerations:
+   - Consider format versioning
+   - Add format validation
+   - Implement style checking
+   - Add output validation

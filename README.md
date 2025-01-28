@@ -1,20 +1,38 @@
 # 🎙️ Dropbox Audio Processing Suite
 
-This repository contains two powerful audio processing systems that automatically transcribe and analyze audio files:
+This repository contains a modular audio processing system that automatically transcribes and analyzes audio files.
 
 ## 🔄 Systems Overview
 
-### 1. 📞 Zoom Recording Monitor (dropbox_monitor.py)
-- 🎯 **Purpose**: Automatically processes Zoom recording files
-- 📁 **Watches**: Specific Zoom recordings folder
-- 🎤 **Format**: Handles .m4a files from Zoom
-- 📝 **Output**: Transcripts and content analysis
+### Core Components
+The system is organized into modular components:
 
-### 2. 🎵 General Audio Monitor (audio_monitor.py)
-- 🎯 **Purpose**: Processes any supported audio file
-- 🎨 **Formats**: Supports .wav, .mp3, .m4a
-- 📁 **Structure**: Creates transcripts alongside original files
-- 🤖 **AI-Powered**: Uses Google's Gemini Pro for transcription
+- 📥 **Input**: File monitoring and handling
+  - Watches folders for new audio files
+  - Supports both Zoom recordings and general audio
+  - Handles file validation and preprocessing
+
+- 🔄 **Processing**: Audio analysis pipeline
+  - Chunks large audio files
+  - Manages transcription
+  - Handles speaker diarization
+
+- 📤 **Output**: Results formatting
+  - Generates formatted transcripts
+  - Creates content analysis
+  - Organizes output files
+
+### Monitor Types
+
+1. 📞 **Zoom Recording Monitor**
+   - Automatically processes Zoom recordings
+   - Handles .m4a files from Zoom
+   - Creates organized transcript folders
+
+2. 🎵 **General Audio Monitor**
+   - Processes any supported audio file (.wav, .mp3, .m4a)
+   - Creates transcripts alongside original files
+   - Uses Google's Gemini Pro for transcription
 
 ## 🚀 Getting Started
 
@@ -35,50 +53,52 @@ cd dropbox_monitor
 pip install -r requirements.txt
 ```
 
-3. Create a .env file with your Google API key:
+3. Configure your environment:
+   - Copy .env.example to .env
+   - Add your Google API key
+   - Customize watch folders if needed
+
+## 📁 Project Structure
+
 ```
-GOOGLE_API_KEY=your_key_here
+dropbox_monitor/
+├── common/          # Shared utilities
+│   ├── config.py    # Configuration management
+│   └── utils.py     # Common helper functions
+├── input/           # Input handling
+│   ├── file_handler.py
+│   └── monitor.py
+├── processing/      # Audio processing
+│   ├── chunker.py
+│   ├── diarizer.py
+│   └── transcriber.py
+├── output/          # Result formatting
+│   ├── analyzer.py
+│   └── formatter.py
+└── tests/           # Test suite
 ```
 
 ## 🛠️ Usage
 
-### Zoom Recording Monitor
+### Command Line Interface
 ```bash
-python dropbox_monitor.py
-```
-- Monitors Zoom recordings folder
-- Creates organized transcript folders
-- Generates analysis documents
+# For Zoom recordings
+python -m input.monitor --mode=zoom --path=/path/to/zoom/folder
 
-### General Audio Monitor
-```bash
-python audio_monitor.py
+# For general audio files
+python -m input.monitor --mode=audio --path=/path/to/audio/folder
 ```
-- Drop any audio file (.wav, .mp3, .m4a) into the watched folder
-- Creates a "transcripts" folder next to your audio
-- Generates both transcript and analysis
 
-## 📁 File Structure
+### Output Structure
 
-### Zoom Monitor Output
 ```
-Zoom Folder/
+Watched Folder/
 └── Meeting_Name/
-    ├── Audio Record/
+    ├── Audio/
     │   └── recording.m4a
-    └── transcript/
-        ├── recording.m4a
-        ├── recording.txt
-        └── recording_analysis.md
-```
-
-### Audio Monitor Output
-```
-Audio Files/
-├── my_audio.mp3
-└── transcripts/
-    ├── my_audio.txt
-    └── my_audio_analysis.md
+    └── Transcript/
+        ├── recording.md
+        └── analysis.md
 ```
 
 ## 🤖 Features
@@ -87,6 +107,7 @@ Audio Files/
 - 📝 Full audio transcription
 - 🎯 High accuracy with Gemini Pro
 - 📊 Handles files up to 20MB
+- 🔄 Automatic chunking for large files
 
 ### Analysis
 - 🎨 Speaking style analysis
@@ -94,35 +115,60 @@ Audio Files/
 - 💡 Title suggestions
 - 📊 Content breakdown
 
-## 📝 Logs
-- 📊 Detailed processing logs
-- ⏱️ Timestamps for all operations
-- 🚫 Error tracking and reporting
-- 📈 File size and processing metrics
-
 ## ⚙️ Configuration
-Both systems use:
-- 🔑 Environment variables for API keys
-- 📁 Configurable watch folders
-- 🎚️ Customizable file handling
-- 📊 Adjustable logging levels
+
+### Environment Variables
+```bash
+# Required
+GOOGLE_API_KEY=your_api_key
+
+# Optional
+WATCH_FOLDER_ZOOM=/path/to/zoom/folder
+WATCH_FOLDER_AUDIO=/path/to/audio/folder
+MAX_CHUNK_SIZE_MB=15
+MIN_SILENCE_DURATION=1.0
+```
+
+### Customization
+- 🔧 See common/config.py for all options
+- 📝 Logging configuration in common/utils.py
+- 🎚️ Processing parameters in processing/chunker.py
 
 ## 🚨 Common Issues
 
 ### File Size Limits
 - Maximum file size: 20MB
-- For larger files, consider splitting audio
+- Automatic chunking for larger files
+- Configurable chunk sizes
 
 ### Processing Time
 - Varies with file size
 - Network speed dependent
 - Progress shown in logs
 
+### Common Errors
+- "File in use": Wait for file to be fully written
+- "API rate limit": Automatic retries implemented
+- "Transcription failed": Check chunk sizes
+
+## 🔄 Migration Guide
+
+### From Previous Versions
+1. Back up your existing configuration
+2. Update your import statements if using as a library
+3. Review new configuration options
+4. Test with existing watch folders
+
+### Breaking Changes
+- New module structure requires updated imports
+- Configuration now in common/config.py
+- Enhanced error handling may change some behaviors
+
 ## 🤝 Contributing
-Feel free to:
-- 🐛 Report bugs
-- 💡 Suggest features
-- 🔧 Submit pull requests
+- 📝 See CONTRIBUTING.md for guidelines
+- 🐛 Report bugs via Issues
+- 💡 Feature requests welcome
+- 🧪 Run tests with pytest
 
 ## 📜 License
 MIT License - feel free to use and modify!

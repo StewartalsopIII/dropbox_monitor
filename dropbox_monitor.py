@@ -10,7 +10,7 @@ from tqdm import tqdm
 from common.config import Config, init_environment
 from common.utils import setup_logging
 from input.file_handler import AudioFileHandler
-from transcript_formatter import TranscriptFormatter
+from output.formatter import TranscriptFormatter
 from processing.diarizer import SpeakerDiarizer
 from processing.transcriber import CloudSpeechTranscriber
 

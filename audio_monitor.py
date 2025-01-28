@@ -13,9 +13,9 @@ import google.generativeai as genai
 from common.config import Config, init_environment
 from common.utils import setup_logging
 from input.file_handler import AudioFileHandler
-from title_analyzer import TitleAnalyzer
+from output.analyzer import TitleAnalyzer
 from processing.chunker import AudioChunker
-from transcript_formatter import TranscriptFormatter
+from output.formatter import TranscriptFormatter
 from processing.diarizer import SpeakerDiarizer
 from processing.transcriber import GeminiTranscriber
 
